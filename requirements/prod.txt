@@ -1,0 +1,4 @@
+-r base.txt
+# Prod-only packages (gunicorn, sentry-sdk, …)
+gunicorn
+sentry-sdk

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Save Your API Key{% endblock %}
+{% block page_title %}Save Your API Key{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <div class="bg-white rounded-xl border border-amber-300 shadow-sm p-6">
+
+    <!-- Warning banner -->
+    <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6">
+      <span class="text-xl">⚠️</span>
+      <p class="text-sm text-amber-800">
+        This is the <strong>only time</strong> your API key will be shown.
+        Copy and store it in a secure place — you will not be able to retrieve it again.
+      </p>
+    </div>
+
+    <!-- Key details -->
+    <dl class="mb-5 space-y-2 text-sm">
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Label</dt>
+        <dd class="font-medium text-gray-800">{{ api_key.label }}</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Created</dt>
+        <dd class="text-gray-800">{{ api_key.created_at|date:"M j, Y H:i" }}</dd>
+      </div>
+      {% if api_key.expires_at %}
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Expires</dt>
+        <dd class="text-gray-800">{{ api_key.expires_at|date:"M j, Y H:i" }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+
+    <!-- Raw key display -->
+    <label class="block text-sm font-medium text-gray-700 mb-2">Your API Key</label>
+    <div class="flex items-center gap-2 mb-6">
+      <input id="apiKeyInput"
+             type="text"
+             value="{{ raw_key }}"
+             readonly
+             class="flex-1 font-mono text-sm bg-gray-50 border border-gray-300
+                    rounded-lg px-3 py-2 text-gray-800 select-all">
+      <button onclick="copyKey()"
+              class="flex-shrink-0 bg-gray-800 text-white text-sm px-4 py-2
+                     rounded-lg hover:bg-gray-900 transition">
+        Copy
+      </button>
+    </div>
+
+    <!-- Usage example -->
+    <div class="bg-gray-900 rounded-lg p-4 mb-6 text-xs font-mono text-gray-300 overflow-x-auto">
+      <span class="text-gray-500"># Example request</span><br>
+      curl -X POST https://yourdomain.com/api/v1/send \<br>
+      &nbsp;&nbsp;-H <span class="text-green-400">"Authorization: Bearer {{ raw_key }}"</span> \<br>
+      &nbsp;&nbsp;-H <span class="text-green-400">"Content-Type: application/json"</span> \<br>
+      &nbsp;&nbsp;-d <span class="text-yellow-300">'{"to":"user@example.com","subject":"Hello"}'</span>
+    </div>
+
+    <a href="{% url 'web:api-keys' %}"
+       class="inline-block bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700">
+      I've saved my key →
+    </a>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copyKey() {
+    const el = document.getElementById('apiKeyInput');
+    el.select();
+    navigator.clipboard.writeText(el.value).then(() => {
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      btn.classList.replace('bg-gray-800', 'bg-green-600');
+      setTimeout(() => {
+        btn.textContent = 'Copy';
+        btn.classList.replace('bg-green-600', 'bg-gray-800');
+      }, 2000);
+    });
+  }
+</script>
+{% endblock %}

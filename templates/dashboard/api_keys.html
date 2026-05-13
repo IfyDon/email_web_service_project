@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}API Keys{% endblock %}
+{% block page_title %}API Keys{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+
+  <!-- Header row -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">
+      Use these keys to authenticate requests to the MailFlow API.
+      Keys are shown <strong>once</strong> on creation — store them securely.
+    </p>
+    <a href="{% url 'web:api-key-create' %}"
+       class="inline-flex items-center gap-2 bg-indigo-600 text-white text-sm
+              px-4 py-2 rounded-lg hover:bg-indigo-700 flex-shrink-0 ml-4">
+      + New API Key
+    </a>
+  </div>
+
+  <!-- Keys table -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    {% if api_keys %}
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Label</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Prefix</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Last used</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Expires</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for key in api_keys %}
+        <tr class="hover:bg-gray-50 {% if not key.is_active %}opacity-50{% endif %}">
+          <td class="px-5 py-3 font-medium text-gray-800">{{ key.label }}</td>
+          <td class="px-5 py-3">
+            <code class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs font-mono">
+              {{ key.prefix }}…
+            </code>
+          </td>
+          <td class="px-5 py-3">
+            {% if key.is_active %}
+              <span class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                ● Active
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                ● Revoked
+              </span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-3 text-gray-500">
+            {{ key.last_used|date:"M j, Y H:i"|default:"Never" }}
+          </td>
+          <td class="px-5 py-3 text-gray-500">
+            {{ key.expires_at|date:"M j, Y"|default:"Never" }}
+          </td>
+          <td class="px-5 py-3 text-gray-500">
+            {{ key.created_at|date:"M j, Y" }}
+          </td>
+          <td class="px-5 py-3 text-right">
+            {% if key.is_active %}
+            <form method="post"
+                  action="{% url 'web:api-key-revoke' key.pk %}"
+                  onsubmit="return confirm('Revoke key \'{{ key.label }}\'? This cannot be undone.');">
+              {% csrf_token %}
+              <button type="submit"
+                      class="text-xs text-red-600 hover:text-red-800 font-medium">
+                Revoke
+              </button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-16 text-center text-gray-400">
+      <p class="text-3xl mb-3">🔑</p>
+      <p class="font-medium text-gray-600 mb-1">No API keys yet</p>
+      <p class="text-sm mb-4">Create your first key to start sending emails via the API.</p>
+      <a href="{% url 'web:api-key-create' %}"
+         class="inline-block bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700">
+        Create API Key
+      </a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Docs callout -->
+  <div class="mt-4 text-xs text-gray-400">
+    Use your key in API requests:
+    <code class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-mono ml-1">
+      Authorization: Bearer ems_your_key_here
+    </code>
+    · <a href="/api/docs/" class="text-indigo-500 hover:underline">View API docs →</a>
+  </div>
+
+</div>
+{% endblock %}

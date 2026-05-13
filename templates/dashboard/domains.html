@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Sending Domains{% endblock %}
+{% block page_title %}Sending Domains{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <p class="text-sm text-gray-500">
+      Add and verify the domains you want to send email from.
+      All three DNS records (SPF, DKIM, DMARC) must be published before sending.
+    </p>
+    <a href="{% url 'web:domain-add' %}"
+       class="flex-shrink-0 ml-4 inline-flex items-center gap-2 bg-indigo-600 text-white
+              text-sm px-4 py-2 rounded-lg hover:bg-indigo-700">
+      + Add Domain
+    </a>
+  </div>
+
+  <!-- Domain cards -->
+  {% if domains %}
+  <div class="space-y-3">
+    {% for domain in domains %}
+    <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-5 py-4
+                flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <!-- Status dot -->
+        <span class="w-2.5 h-2.5 rounded-full flex-shrink-0
+          {% if domain.status == 'verified' %}bg-green-500
+          {% elif domain.status == 'failed' %}bg-red-400
+          {% else %}bg-yellow-400{% endif %}">
+        </span>
+
+        <div>
+          <p class="font-semibold text-gray-800">{{ domain.name }}</p>
+          <p class="text-xs text-gray-400 mt-0.5">
+            Added {{ domain.created_at|date:"M j, Y" }}
+            {% if domain.verified_at %}
+              · Verified {{ domain.verified_at|date:"M j, Y" }}
+            {% endif %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Record badges -->
+      <div class="flex items-center gap-2">
+        {% for label, ok in domain.spf_verified|yesno:"spf,"|center:0,domain.dkim_verified|yesno:"dkim,"|center:0,domain.dmarc_verified|yesno:"dmarc,"|center:0 %}
+        {% endfor %}
+        {% for record in domain.dns_records_to_publish %}
+        <span class="text-xs px-2 py-0.5 rounded-full font-medium
+          {% if record.verified %}bg-green-100 text-green-700
+          {% else %}bg-gray-100 text-gray-500{% endif %}">
+          {{ record.purpose }}
+        </span>
+        {% endfor %}
+
+        <a href="{% url 'web:domain-detail' domain.pk %}"
+           class="text-sm text-indigo-600 hover:text-indigo-800 ml-2 font-medium">
+          Manage →
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Empty state -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm px-6 py-16 text-center text-gray-400">
+    <p class="text-3xl mb-3">🌐</p>
+    <p class="font-medium text-gray-600 mb-1">No domains yet</p>
+    <p class="text-sm mb-4">Add a sending domain to get started.</p>
+    <a href="{% url 'web:domain-add' %}"
+       class="inline-block bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700">
+      Add Domain
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Fast, Reliable Email Delivery{% endblock %}
+
+{% block public_content %}
+<!-- Hero -->
+<section class="text-center py-24">
+  <h1 class="text-5xl font-extrabold text-gray-900 mb-4 leading-tight">
+    Email delivery built for<br class="hidden md:block"> developers.
+  </h1>
+  <p class="text-xl text-gray-500 max-w-xl mx-auto mb-8">
+    Transactional and bulk email via a simple REST API.
+    Open tracking, webhooks, and domain verification included.
+  </p>
+  <div class="flex justify-center gap-4">
+    <a href="{% url 'account_signup' %}"
+       class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-indigo-700 shadow">
+      Get started free
+    </a>
+    <a href="/api/docs/"
+       class="border border-gray-300 text-gray-700 px-6 py-3 rounded-xl font-semibold hover:bg-gray-50">
+      View API docs →
+    </a>
+  </div>
+</section>
+
+<!-- Feature grid -->
+<section class="grid md:grid-cols-3 gap-6 pb-20">
+  {% for feat in features %}
+  <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <div class="text-3xl mb-3">{{ feat.icon }}</div>
+    <h3 class="font-semibold text-gray-800 mb-1">{{ feat.title }}</h3>
+    <p class="text-sm text-gray-500">{{ feat.description }}</p>
+  </div>
+  {% empty %}
+  <!-- Static fallback until context is wired in Phase 5 -->
+  <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <div class="text-3xl mb-3">⚡</div>
+    <h3 class="font-semibold text-gray-800 mb-1">Async Delivery</h3>
+    <p class="text-sm text-gray-500">Queue-backed Celery workers send emails without blocking your API response.</p>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <div class="text-3xl mb-3">🔍</div>
+    <h3 class="font-semibold text-gray-800 mb-1">Open & Click Tracking</h3>
+    <p class="text-sm text-gray-500">Know exactly when recipients engage with your emails in real time.</p>
+  </div>
+  <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+    <div class="text-3xl mb-3">🔐</div>
+    <h3 class="font-semibold text-gray-800 mb-1">DKIM / SPF / DMARC</h3>
+    <p class="text-sm text-gray-500">Verify your sending domain and improve deliverability with one click.</p>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

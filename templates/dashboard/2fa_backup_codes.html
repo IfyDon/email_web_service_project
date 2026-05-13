@@ -1,0 +1,57 @@
+<!-- ════════════════════════════════════════════════════════════════════════
+     templates/dashboard/2fa_backup_codes.html
+     Save this as a SEPARATE file: templates/dashboard/2fa_backup_codes.html
+     ════════════════════════════════════════════════════════════════════════ -->
+<!--
+{% extends "base.html" %}
+{% block title %}Backup Codes{% endblock %}
+{% block page_title %}Save Your Backup Codes{% endblock %}
+
+{% block content %}
+<div class="max-w-lg">
+  <div class="bg-white rounded-xl border border-amber-300 shadow-sm p-6">
+
+    <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6">
+      <span class="text-xl">⚠️</span>
+      <p class="text-sm text-amber-800">
+        Save these backup codes somewhere safe. Each code can be used <strong>once</strong>
+        to log in if you lose access to your authenticator app. These won't be shown again.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 mb-6">
+      {% for code in codes %}
+      <code class="bg-gray-100 text-gray-800 font-mono text-sm px-3 py-2 rounded-lg text-center tracking-widest">
+        {{ code }}
+      </code>
+      {% endfor %}
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button onclick="downloadCodes()"
+              class="bg-gray-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-900">
+        Download as .txt
+      </button>
+      <a href="{% url 'web:account' %}"
+         class="bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700">
+        I've saved them →
+      </a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  const codes = {{ codes|safe }};
+  function downloadCodes() {
+    const text = "MailFlow 2FA Backup Codes\n\n" + codes.join("\n");
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "mailflow-backup-codes.txt";
+    a.click();
+  }
+</script>
+{% endblock %}
