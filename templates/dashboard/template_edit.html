@@ -1,5 +1,223 @@
-{% extends 'base.html' %}
-{% block title %}Dashboard{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ page_title }}{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+<!-- CodeMirror for the HTML/MJML editor -->
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css">
+<style>
+  .CodeMirror { height: 420px; font-size: 13px; border-radius: 8px; border: 1px solid #e5e7eb; }
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- TODO -->
+<div class="max-w-5xl">
+<form method="post" id="templateForm">
+  {% csrf_token %}
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+    <!-- ── Left column: metadata ─────────────────────────────────────────── -->
+    <div class="xl:col-span-1 space-y-4">
+
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-4">
+        <h2 class="text-sm font-semibold text-gray-700">Template Details</h2>
+
+        <!-- Name -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Name *</label>
+          <input type="text" name="name" required
+                 value="{{ template.name|default:'' }}"
+                 placeholder="Welcome Email"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <!-- Description -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Description</label>
+          <textarea name="description" rows="2"
+                    placeholder="Sent to new users after signup…"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none
+                           focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ template.description|default:'' }}</textarea>
+        </div>
+
+        <!-- Subject -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Subject line *</label>
+          <input type="text" name="subject" required
+                 value="{{ template.subject|default:'' }}"
+                 placeholder="Welcome, {{ '{{' }} first_name {{ '}}' }}!"
+                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono
+                        focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <p class="mt-1 text-xs text-gray-400">Supports Jinja2: {{ '{{' }} first_name {{ '}}' }}</p>
+        </div>
+
+        <!-- Plain text -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">
+            Plain-text body
+            <span class="font-normal text-gray-400">(auto-generated if blank)</span>
+          </label>
+          <textarea name="body_text" rows="5"
+                    placeholder="Hi {{ '{{' }} first_name {{ '}}' }}, welcome to MailFlow…"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono
+                           resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500">{{ template.body_text|default:'' }}</textarea>
+        </div>
+
+        <!-- Variable schema -->
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">
+            Variable schema
+            <span class="font-normal text-gray-400">(JSON)</span>
+          </label>
+          <textarea id="variableSchema" name="variable_schema" rows="4"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-xs font-mono
+                           resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder='{"first_name": "Recipient first name"}'
+                    >{{ variable_schema_json }}</textarea>
+          <p class="mt-1 text-xs text-gray-400">Documents the variables your template uses.</p>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex gap-3">
+        <button type="submit"
+                class="flex-1 bg-indigo-600 text-white text-sm py-2.5 rounded-lg
+                       hover:bg-indigo-700 font-medium">
+          {% if template %}Save changes{% else %}Create template{% endif %}
+        </button>
+        <a href="{% url 'web:templates' %}"
+           class="flex-1 text-center border border-gray-300 text-gray-600 text-sm
+                  py-2.5 rounded-lg hover:bg-gray-50">
+          Cancel
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ── Right column: code editor ────────────────────────────────────── -->
+    <div class="xl:col-span-2 space-y-4">
+
+      <!-- Editor tabs -->
+      <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+        <div class="flex border-b border-gray-200 bg-gray-50">
+          <button type="button" onclick="switchTab('html')"
+                  id="tab-html"
+                  class="tab-btn px-5 py-3 text-sm font-medium text-indigo-600
+                         border-b-2 border-indigo-600">
+            HTML
+          </button>
+          <button type="button" onclick="switchTab('mjml')"
+                  id="tab-mjml"
+                  class="tab-btn px-5 py-3 text-sm font-medium text-gray-500
+                         border-b-2 border-transparent hover:text-gray-700">
+            MJML
+          </button>
+          <div class="flex-1"></div>
+          {% if template %}
+          <button type="button" onclick="previewTemplate()"
+                  class="px-4 py-2 text-xs text-gray-600 hover:text-indigo-600 font-medium">
+            👁 Preview
+          </button>
+          {% endif %}
+        </div>
+
+        <!-- HTML editor -->
+        <div id="panel-html" class="p-3">
+          <textarea id="htmlEditor" name="body_html"
+                    >{{ template.body_html|default:'' }}</textarea>
+        </div>
+
+        <!-- MJML editor -->
+        <div id="panel-mjml" class="p-3 hidden">
+          <textarea id="mjmlEditor" name="body_mjml"
+                    >{{ template.body_mjml|default:'' }}</textarea>
+        </div>
+      </div>
+
+      <!-- Preview pane (hidden until triggered) -->
+      <div id="previewPane" class="hidden bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <p class="text-sm font-medium text-gray-700">Preview</p>
+          <button onclick="document.getElementById('previewPane').classList.add('hidden')"
+                  class="text-xs text-gray-400 hover:text-gray-600">✕ Close</button>
+        </div>
+        <div class="px-5 py-3 border-b border-gray-100">
+          <p class="text-xs text-gray-500">Subject: <span id="previewSubject" class="text-gray-800 font-medium"></span></p>
+        </div>
+        <iframe id="previewFrame" class="w-full rounded-b-xl" style="height:480px; border:none;"></iframe>
+      </div>
+
+    </div>
+  </div>
+</form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script>
+  // ── CodeMirror setup ──────────────────────────────────────────────────────
+  const htmlCM = CodeMirror.fromTextArea(
+    document.getElementById('htmlEditor'),
+    { mode: 'htmlmixed', theme: 'dracula', lineNumbers: true, lineWrapping: true }
+  );
+  const mjmlCM = CodeMirror.fromTextArea(
+    document.getElementById('mjmlEditor'),
+    { mode: 'xml', theme: 'dracula', lineNumbers: true, lineWrapping: true }
+  );
+
+  // Sync CodeMirror back to textarea on form submit
+  document.getElementById('templateForm').addEventListener('submit', () => {
+    htmlCM.save();
+    mjmlCM.save();
+  });
+
+  // ── Tab switching ─────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    ['html', 'mjml'].forEach(t => {
+      document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById(`tab-${t}`);
+      if (t === tab) {
+        btn.classList.replace('text-gray-500', 'text-indigo-600');
+        btn.classList.replace('border-transparent', 'border-indigo-600');
+      } else {
+        btn.classList.replace('text-indigo-600', 'text-gray-500');
+        btn.classList.replace('border-indigo-600', 'border-transparent');
+      }
+    });
+    // Refresh the active editor so it renders correctly
+    (tab === 'html' ? htmlCM : mjmlCM).refresh();
+  }
+
+  // ── Live preview ──────────────────────────────────────────────────────────
+  {% if template %}
+  async function previewTemplate() {
+    const pane = document.getElementById('previewPane');
+    pane.classList.remove('hidden');
+    try {
+      const resp = await fetch("{% url 'web:template-preview' template.pk %}", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}',
+        },
+        body: JSON.stringify({ context: {} }),
+      });
+      const data = await resp.json();
+      document.getElementById('previewSubject').textContent = data.subject || '(no subject)';
+      const frame = document.getElementById('previewFrame');
+      frame.srcdoc = data.body_html || '<p style="padding:20px;color:#888">No HTML body.</p>';
+    } catch (e) {
+      console.error('Preview failed', e);
+    }
+  }
+  {% endif %}
+</script>
 {% endblock %}

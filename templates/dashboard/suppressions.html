@@ -1,5 +1,101 @@
-{% extends 'base.html' %}
-{% block title %}Dashboard{% endblock %}
+{% extends "base.html" %}
+{% block title %}Suppressions{% endblock %}
+{% block page_title %}Suppression List{% endblock %}
+
 {% block content %}
-<!-- TODO -->
+<div class="max-w-5xl space-y-6">
+
+  <!-- Info banner -->
+  <div class="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 text-sm text-blue-800">
+    Addresses on this list will <strong>never</strong> receive emails from your account,
+    regardless of what you send via the API. Bounces and complaints are added automatically.
+  </div>
+
+  <!-- Add manually + filter row -->
+  <div class="flex flex-col sm:flex-row gap-3">
+
+    <!-- Manual add form -->
+    <form method="post" class="flex items-center gap-2 flex-1">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="add">
+      <input type="email" name="email" required placeholder="add@example.com"
+             class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm
+                    focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <button type="submit"
+              class="bg-gray-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-900">
+        Add
+      </button>
+    </form>
+
+    <!-- Reason filter -->
+    <form method="get" class="flex items-center gap-2">
+      <select name="reason" onchange="this.form.submit()"
+              class="border border-gray-300 rounded-lg px-3 py-2 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <option value="">All reasons</option>
+        {% for value, label in reason_choices %}
+        <option value="{{ value }}"
+                {% if reason_filter == value %}selected{% endif %}>
+          {{ label }}
+        </option>
+        {% endfor %}
+      </select>
+    </form>
+
+  </div>
+
+  <!-- Suppression table -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    {% if suppressions %}
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reason</th>
+          <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Added</th>
+          <th class="px-5 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for sup in suppressions %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-5 py-3 font-mono text-gray-800 text-xs">{{ sup.email }}</td>
+          <td class="px-5 py-3">
+            <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium
+              {% if sup.reason == 'bounce' %}bg-red-100 text-red-700
+              {% elif sup.reason == 'complaint' %}bg-orange-100 text-orange-700
+              {% elif sup.reason == 'unsubscribe' %}bg-yellow-100 text-yellow-700
+              {% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ sup.get_reason_display }}
+            </span>
+          </td>
+          <td class="px-5 py-3 text-gray-500">{{ sup.created_at|date:"M j, Y" }}</td>
+          <td class="px-5 py-3 text-right">
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remove">
+              <input type="hidden" name="email"  value="{{ sup.email }}">
+              <button type="submit"
+                      class="text-xs text-red-500 hover:text-red-700 font-medium"
+                      onclick="return confirm('Remove {{ sup.email }} from suppression list?')">
+                Remove
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="px-6 py-16 text-center text-gray-400">
+      <p class="text-3xl mb-3">🚫</p>
+      <p class="font-medium text-gray-600 mb-1">No suppressed addresses
+        {% if reason_filter %}for this filter{% endif %}
+      </p>
+      <p class="text-sm">Bounces and complaints will appear here automatically.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
 {% endblock %}

@@ -51,3 +51,32 @@ class CursorResultsPagination(PageNumberPagination):
 
     page_size = 100
     ordering  = "-created_at"
+
+class TemplateRenderError(Exception):
+    """Raised when an email template fails to render."""
+
+class QuotaExceededError(Exception):
+    """Raised when a user exceeds their monthly sending quota."""
+
+
+class SuppressionError(Exception):
+    """Raised when a suppressed address is used."""
+
+class RecipientSuppressed(Exception):
+    """Raised when attempting to send to a suppressed address."""
+
+
+class DomainVerificationError(Exception):
+    """Raised when domain DNS verification fails."""
+
+
+class QuotaExceededError(Exception):
+    """Raised when a user exceeds their monthly sending quota."""
+
+
+class APIKeyError(Exception):
+    """Raised on invalid or revoked API key operations."""
+
+
+class WebhookDeliveryError(Exception):
+    """Raised when a webhook POST fails after all retries."""

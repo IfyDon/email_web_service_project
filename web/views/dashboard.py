@@ -1,47 +1,61 @@
 """
-Top-level dashboard views: overview, message list/detail,
-suppressions, unsubscribe landing, status page, and public landing page.
+Top-level dashboard views.
+Updated: unsubscribe() now calls suppression_service.
 
 Place: web/views/dashboard.py
 """
 
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_GET, require_POST
+from django.shortcuts import render, redirect
 from django.http import HttpRequest, HttpResponse
+from django.contrib import messages
+
+from services.suppression_service import (
+    consume_unsubscribe_token,
+    get_suppressions,
+)
+from apps.suppressions.models import Suppression
 
 
 # ── Public ────────────────────────────────────────────────────────────────────
 
 def landing(request: HttpRequest) -> HttpResponse:
-    """Public marketing / landing page."""
     return render(request, "public/landing.html")
 
 
 def status_page(request: HttpRequest) -> HttpResponse:
-    """System status page (public)."""
     return render(request, "public/status.html")
 
 
 def unsubscribe(request: HttpRequest, token: str) -> HttpResponse:
     """
-    Unsubscribe landing page.
-    Phase 2 will wire this to the suppression service via the token.
+    Public unsubscribe landing page.
+    GET  — show a confirmation page.
+    POST — consume the token, suppress the email, show success.
     """
-    # TODO (Phase 2): validate token, add to suppression list
-    return render(request, "public/unsubscribe.html", {"token": token})
+    if request.method == "POST":
+        success, email = consume_unsubscribe_token(token)
+        if success:
+            return render(request, "public/unsubscribe.html", {
+                "success": True,
+                "email":   email,
+            })
+        return render(request, "public/unsubscribe.html", {
+            "success": False,
+            "error":   "This unsubscribe link is invalid or has already been used.",
+        })
+
+    # GET — show confirm page
+    return render(request, "public/unsubscribe.html", {
+        "token":   token,
+        "confirm": True,
+    })
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 def overview(request: HttpRequest) -> HttpResponse:
-    """
-    Dashboard home – shows stats summary charts.
-    Stats are fetched via the analytics service (Phase 3).
-    """
     context = {
         "page_title": "Overview",
-        # Placeholder stats – replaced in Phase 3
         "stats": {
             "sent": 0, "delivered": 0, "opened": 0,
             "clicked": 0, "bounced": 0, "complained": 0,
@@ -50,29 +64,51 @@ def overview(request: HttpRequest) -> HttpResponse:
     return render(request, "dashboard/index.html", context)
 
 
-def messages(request: HttpRequest) -> HttpResponse:
-    """Message history list with filters."""
-    context = {
+def messages_view(request: HttpRequest) -> HttpResponse:
+    return render(request, "dashboard/messages.html", {
         "page_title": "Messages",
-        "messages": [],   # Phase 3: queryset from email_messages app
-    }
-    return render(request, "dashboard/messages.html", context)
+        "messages_list": [],
+    })
 
 
 def message_detail(request: HttpRequest, pk) -> HttpResponse:
-    """Single message detail: headers, status timeline, events."""
-    # Phase 3: get_object_or_404(Message, pk=pk, user=request.user)
-    context = {
+    return render(request, "dashboard/message_detail.html", {
         "page_title": "Message Detail",
         "message": None,
-    }
-    return render(request, "dashboard/message_detail.html", context)
+    })
 
 
 def suppressions(request: HttpRequest) -> HttpResponse:
-    """Suppression list viewer."""
-    context = {
-        "page_title": "Suppressions",
-        "suppressions": [],   # Phase 2 wires this
-    }
-    return render(request, "dashboard/suppressions.html", context)
+    """
+    GET  — list all suppressions.
+    POST — manual add or remove.
+    """
+    reason  = request.GET.get("reason", "")
+    sup_qs  = get_suppressions(request.user, reason=reason or None)
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        email  = request.POST.get("email", "").strip()
+
+        if action == "add" and email:
+            from services.suppression_service import add_manual
+            add_manual(user=request.user, email=email,
+                       description=request.POST.get("description", ""))
+            messages.success(request, f"'{email}' added to suppression list.")
+            return redirect("web:suppressions")
+
+        if action == "remove" and email:
+            from services.suppression_service import remove_suppression
+            removed = remove_suppression(user=request.user, email=email)
+            if removed:
+                messages.success(request, f"'{email}' removed from suppression list.")
+            else:
+                messages.warning(request, f"'{email}' was not on the suppression list.")
+            return redirect("web:suppressions")
+
+    return render(request, "dashboard/suppressions.html", {
+        "page_title":  "Suppressions",
+        "suppressions": sup_qs,
+        "reason_filter": reason,
+        "reason_choices": Suppression.Reason.choices,
+    })

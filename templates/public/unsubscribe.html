@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Unsubscribe{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-16">
+
+  {% if success %}
+  <!-- Success state -->
+  <div class="bg-white rounded-2xl border border-green-200 shadow-sm p-8 text-center">
+    <p class="text-4xl mb-4">✅</p>
+    <h1 class="text-xl font-bold text-gray-800 mb-2">You've been unsubscribed</h1>
+    <p class="text-sm text-gray-500">
+      <strong>{{ email }}</strong> has been removed from this mailing list.
+      You won't receive any further emails from this sender.
+    </p>
+    <p class="mt-4 text-xs text-gray-400">
+      Changed your mind? Contact the sender directly to re-subscribe.
+    </p>
+  </div>
+
+  {% elif error %}
+  <!-- Error state -->
+  <div class="bg-white rounded-2xl border border-red-200 shadow-sm p-8 text-center">
+    <p class="text-4xl mb-4">❌</p>
+    <h1 class="text-xl font-bold text-gray-800 mb-2">Link invalid</h1>
+    <p class="text-sm text-gray-500">{{ error }}</p>
+  </div>
+
+  {% elif confirm %}
+  <!-- Confirm state (GET) -->
+  <div class="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 text-center">
+    <p class="text-4xl mb-4">📭</p>
+    <h1 class="text-xl font-bold text-gray-800 mb-2">Unsubscribe</h1>
+    <p class="text-sm text-gray-500 mb-6">
+      Click the button below to confirm you'd like to stop receiving emails
+      from this sender.
+    </p>
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit"
+              class="bg-red-600 text-white text-sm px-6 py-2.5 rounded-lg
+                     hover:bg-red-700 font-medium">
+        Confirm unsubscribe
+      </button>
+    </form>
+    <p class="mt-4 text-xs text-gray-400">
+      Required by CAN-SPAM Act. Takes effect immediately.
+    </p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
