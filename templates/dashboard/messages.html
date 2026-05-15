@@ -1,5 +1,105 @@
-{% extends 'base.html' %}
-{% block title %}Dashboard{% endblock %}
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block page_title %}Messages{% endblock %}
+
 {% block content %}
-<!-- TODO -->
+<div class="max-w-6xl">
+
+  <!-- Filters bar -->
+  <form method="get" class="flex flex-wrap gap-3 mb-6">
+    <input type="text" name="q" value="{{ search_query }}"
+           placeholder="Search subject or email…"
+           class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64
+                  focus:outline-none focus:ring-2 focus:ring-indigo-500">
+    <select name="status" onchange="this.form.submit()"
+            class="border border-gray-300 rounded-lg px-3 py-2 text-sm
+                   focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      <option value="">All statuses</option>
+      {% for value, label in status_choices %}
+      <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>
+        {{ label }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit"
+            class="bg-gray-800 text-white text-sm px-4 py-2 rounded-lg hover:bg-gray-900">
+      Filter
+    </button>
+    {% if status_filter or search_query %}
+    <a href="{% url 'web:messages' %}"
+       class="text-sm text-gray-400 hover:text-gray-600 self-center">✕ Clear</a>
+    {% endif %}
+  </form>
+
+  <!-- Messages table -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    {% if messages_list %}
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">To</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Subject</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Attempts</th>
+          <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Queued</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for msg in messages_list %}
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ msg.to_email }}</td>
+          <td class="px-4 py-3 text-gray-800 max-w-xs truncate">{{ msg.subject }}</td>
+          <td class="px-4 py-3">
+            <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium
+              {% if msg.status == 'delivered' or msg.status == 'opened' or msg.status == 'clicked' %}bg-green-100 text-green-700
+              {% elif msg.status == 'queued' or msg.status == 'sending' %}bg-yellow-100 text-yellow-700
+              {% elif msg.status == 'bounced' or msg.status == 'failed' %}bg-red-100 text-red-700
+              {% elif msg.status == 'complained' %}bg-orange-100 text-orange-700
+              {% else %}bg-gray-100 text-gray-600{% endif %}">
+              {{ msg.get_status_display }}
+            </span>
+          </td>
+          <td class="px-4 py-3 text-gray-500 text-center">{{ msg.attempt_count }}/{{ msg.max_attempts }}</td>
+          <td class="px-4 py-3 text-gray-400 text-xs">{{ msg.queued_at|date:"M j, Y H:i" }}</td>
+          <td class="px-4 py-3 text-right">
+            <a href="{% url 'web:message-detail' msg.pk %}"
+               class="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+              View →
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    {% if messages_list.has_other_pages %}
+    <div class="px-4 py-3 border-t border-gray-100 flex items-center justify-between text-sm text-gray-500">
+      <span>Page {{ messages_list.number }} of {{ messages_list.paginator.num_pages }}</span>
+      <div class="flex gap-2">
+        {% if messages_list.has_previous %}
+        <a href="?page={{ messages_list.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">← Prev</a>
+        {% endif %}
+        {% if messages_list.has_next %}
+        <a href="?page={{ messages_list.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}"
+           class="px-3 py-1 border border-gray-300 rounded-lg hover:bg-gray-50">Next →</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="px-6 py-16 text-center text-gray-400">
+      <p class="text-3xl mb-3">📨</p>
+      <p class="font-medium text-gray-600 mb-1">No messages
+        {% if status_filter or search_query %}matching your filters{% endif %}
+      </p>
+      <p class="text-sm">Messages appear here after you send via the API.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
 {% endblock %}

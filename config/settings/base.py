@@ -236,3 +236,42 @@ AUTH_USER_MODEL = "accounts.User"
 SITE_ID = 1
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 """
+
+"""
+ADD / REPLACE only these blocks inside config/settings/base.py.
+Do not replace the entire file — merge these settings in.
+
+Place: config/settings/base.py  (additions only)
+"""
+
+# ── After the existing CELERY block, add these lines ─────────────────────────
+
+# Email dispatch backend: "ses" | "smtp"
+# Switch to "ses" in prod.py once AWS credentials are configured
+EMAIL_DISPATCH_BACKEND = "smtp"
+
+# Public base URL used in tracking links and unsubscribe URLs
+APP_BASE_URL = "http://localhost:8000"   # override in prod.py
+
+# ── Anymail (optional – alternative ESP abstraction) ──────────────────────────
+# Uncomment and configure if using django-anymail instead of raw boto3/SMTP
+# ANYMAIL = {
+#     "SENDGRID_API_KEY":  config("SENDGRID_API_KEY",  default=""),
+#     "MAILGUN_API_KEY":   config("MAILGUN_API_KEY",   default=""),
+#     "MAILGUN_SENDER_DOMAIN": config("MAILGUN_DOMAIN", default=""),
+# }
+
+# ── AWS SES (used when EMAIL_DISPATCH_BACKEND = "ses") ───────────────────────
+AWS_ACCESS_KEY_ID     = config("AWS_ACCESS_KEY_ID",     default="")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
+AWS_SES_REGION        = config("AWS_SES_REGION",        default="eu-west-1")
+
+# ── SMTP fallback (dev / CI) ──────────────────────────────────────────────────
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# For production SMTP relay:
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# EMAIL_HOST    = config("EMAIL_HOST",     default="smtp.mailgun.org")
+# EMAIL_PORT    = config("EMAIL_PORT",     default=587, cast=int)
+# EMAIL_USE_TLS = config("EMAIL_USE_TLS",  default=True, cast=bool)
+# EMAIL_HOST_USER     = config("EMAIL_HOST_USER",     default="")
+# EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")

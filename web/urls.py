@@ -11,7 +11,7 @@ urlpatterns = [
 
     # ── Dashboard ─────────────────────────────────────────────────────────────
     path("dashboard/",                    login_required(dashboard.overview),       name="dashboard"),
-    path("dashboard/messages/",           login_required(dashboard.messages),       name="messages"),
+    path("dashboard/messages/",           login_required(dashboard.messages_view), name="messages"),
     path("dashboard/messages/<uuid:pk>/", login_required(dashboard.message_detail), name="message-detail"),
 
     # ── Domains ───────────────────────────────────────────────────────────────

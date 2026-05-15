@@ -14,6 +14,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from apps.authentication.models import APIKey
 
 
+
 def _hash(raw: str) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 

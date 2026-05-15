@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Message Detail{% endblock %}
+{% block page_title %}Message Detail{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl space-y-6">
+
+  <!- - Header card - ->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <h2 class="font-semibold text-gray-800 text-lg mb-1">{{ message.subject }}</h2>
+        <p class="text-sm text-gray-500">
+          From <strong>{{ message.from_name|default:message.from_email }}</strong>
+          &rarr; <strong>{{ message.to_name|default:message.to_email }}</strong>
+        </p>
+      </div>
+      <span class="inline-block text-xs px-3 py-1 rounded-full font-semibold
+        {% if message.status == 'delivered' or message.status == 'opened' or message.status == 'clicked' %}bg-green-100 text-green-700
+        {% elif message.status == 'queued' or message.status == 'sending' %}bg-yellow-100 text-yellow-700
+        {% elif message.status == 'bounced' or message.status == 'failed' %}bg-red-100 text-red-700
+        {% else %}bg-gray-100 text-gray-600{% endif %}">
+        {{ message.get_status_display }}
+      </span>
+    </div>
+
+    <dl class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+      <div><dt class="text-gray-400">Message ID</dt>
+           <dd class="font-mono text-xs text-gray-600 break-all">{{ message.pk }}</dd></div>
+      <div><dt class="text-gray-400">ESP ID</dt>
+           <dd class="font-mono text-xs text-gray-600">{{ message.esp_message_id|default:"—" }}</dd></div>
+      <div><dt class="text-gray-400">Queued</dt>
+           <dd>{{ message.queued_at|date:"M j, Y H:i:s" }}</dd></div>
+      <div><dt class="text-gray-400">Sent</dt>
+           <dd>{{ message.sent_at|date:"M j, Y H:i:s"|default:"—" }}</dd></div>
+      <div><dt class="text-gray-400">Attempts</dt>
+           <dd>{{ message.attempt_count }} / {{ message.max_attempts }}</dd></div>
+      <div><dt class="text-gray-400">Domain</dt>
+           <dd>{{ message.domain.name|default:"—" }}</dd></div>
+    </dl>
+  </div>
+
+  <!- - Event timeline - ->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-700">Event Timeline</h3>
+    </div>
+    {% if events %}
+    <ol class="px-5 py-4 space-y-3">
+      {% for event in events %}
+      <li class="flex items-start gap-3 text-sm">
+        <span class="mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0
+          {% if event.event_type == 'delivered' or event.event_type == 'opened' or event.event_type == 'clicked' %}bg-green-400
+          {% elif event.event_type == 'bounced' or event.event_type == 'failed' %}bg-red-400
+          {% elif event.event_type == 'complained' %}bg-orange-400
+          {% else %}bg-gray-300{% endif %}"></span>
+        <div class="flex-1">
+          <span class="font-medium text-gray-800">{{ event.get_event_type_display }}</span>
+          <span class="text-gray-400 ml-2 text-xs">{{ event.occurred_at|date:"M j, Y H:i:s" }}</span>
+          {% if event.clicked_url %}
+          <p class="text-xs text-gray-500 mt-0.5 truncate">{{ event.clicked_url }}</p>
+          {% endif %}
+          {% if event.ip_address %}
+          <p class="text-xs text-gray-400 mt-0.5">IP: {{ event.ip_address }}</p>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% else %}
+    <p class="px-5 py-8 text-center text-sm text-gray-400">No events recorded yet.</p>
+    {% endif %}
+  </div>
+
+  <!- - Delivery attempts - ->
+  {% if attempts %}
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-100">
+      <h3 class="text-sm font-semibold text-gray-700">Delivery Attempts</h3>
+    </div>
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-100">
+        <tr>
+          <th class="px-5 py-2 text-left text-xs font-semibold text-gray-400 uppercase">#</th>
+          <th class="px-5 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Result</th>
+          <th class="px-5 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Error</th>
+          <th class="px-5 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Time</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        {% for attempt in attempts %}
+        <tr>
+          <td class="px-5 py-2 text-gray-600">{{ attempt.attempt_no }}</td>
+          <td class="px-5 py-2">
+            {% if attempt.success %}
+            <span class="text-green-600 font-medium">✓ Success</span>
+            {% else %}
+            <span class="text-red-500 font-medium">✗ Failed</span>
+            {% endif %}
+          </td>
+          <td class="px-5 py-2 text-gray-400 text-xs truncate max-w-xs">
+            {{ attempt.error|default:"—" }}
+          </td>
+          <td class="px-5 py-2 text-gray-400 text-xs">{{ attempt.attempted_at|date:"M j H:i:s" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <a href="{% url 'web:messages' %}" class="text-sm text-gray-400 hover:text-gray-600">← Back to messages</a>
+
+</div>
+{% endblock %}
