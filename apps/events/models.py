@@ -1,8 +1,9 @@
 """
 Event models — every lifecycle event attached to a Message.
 
-MessageEvent  – immutable record of delivered/opened/clicked/bounced/etc.
-ClickToken    – stores the original URL behind each rewritten click link.
+MessageEvent  – immutable per-occurrence event record.
+ClickToken    – maps a short redirect token to its original URL.
+OpenToken     – maps a pixel token to its message.
 
 Place: apps/events/models.py
 """
@@ -16,36 +17,28 @@ from core.models.base import UUIDModel, TimeStampedModel
 
 class MessageEvent(UUIDModel):
     """
-    Immutable lifecycle event for an outgoing Message.
-
-    One row per occurrence — a message may have many events
-    (multiple opens, multiple clicks on different links, etc.).
-
-    Event types mirror both ESP webhook payloads and our own
-    open/click tracking endpoints.
+    Immutable lifecycle event row — one per occurrence.
+    Never updated after creation.
     """
 
     class EventType(models.TextChoices):
-        QUEUED     = "queued",      "Queued"
-        SENDING    = "sending",     "Sending"
-        DELIVERED  = "delivered",   "Delivered"
-        OPENED     = "opened",      "Opened"
-        CLICKED    = "clicked",     "Clicked"
-        BOUNCED    = "bounced",     "Bounced"
-        COMPLAINED = "complained",  "Complained"
+        QUEUED       = "queued",       "Queued"
+        SENDING      = "sending",      "Sending"
+        DELIVERED    = "delivered",    "Delivered"
+        OPENED       = "opened",       "Opened"
+        CLICKED      = "clicked",      "Clicked"
+        BOUNCED      = "bounced",      "Bounced"
+        COMPLAINED   = "complained",   "Complained"
         UNSUBSCRIBED = "unsubscribed", "Unsubscribed"
-        FAILED     = "failed",      "Failed"
+        FAILED       = "failed",       "Failed"
 
-    # ── Relations ─────────────────────────────────────────────────────────────
-    message    = models.ForeignKey(
+    message     = models.ForeignKey(
         "email_messages.Message",
         on_delete=models.CASCADE,
         related_name="events",
         db_index=True,
     )
-
-    # ── Event data ────────────────────────────────────────────────────────────
-    event_type = models.CharField(
+    event_type  = models.CharField(
         max_length=15, choices=EventType.choices, db_index=True
     )
     occurred_at = models.DateTimeField(default=timezone.now, db_index=True)
@@ -55,10 +48,10 @@ class MessageEvent(UUIDModel):
     user_agent  = models.TextField(blank=True)
     location    = models.CharField(max_length=255, blank=True)
 
-    # For click events — the URL that was clicked
+    # Populated for CLICKED events
     clicked_url = models.TextField(blank=True)
 
-    # ESP-supplied raw payload (bounce reason, feedback loop data, etc.)
+    # Raw ESP webhook payload for BOUNCED / COMPLAINED events
     raw_payload = models.JSONField(default=dict, blank=True)
 
     class Meta:
@@ -68,14 +61,14 @@ class MessageEvent(UUIDModel):
         indexes             = [
             models.Index(fields=["message", "event_type"]),
             models.Index(fields=["message", "occurred_at"]),
-            # For analytics aggregations by type + time
             models.Index(fields=["event_type", "occurred_at"]),
         ]
 
     def __str__(self) -> str:
-        return f"{self.event_type} @ {self.occurred_at:%Y-%m-%d %H:%M} for msg {self.message_id}"
-
-    # ── Factory helpers ───────────────────────────────────────────────────────
+        return (
+            f"{self.event_type} @ {self.occurred_at:%Y-%m-%d %H:%M} "
+            f"for msg {self.message_id}"
+        )
 
     @classmethod
     def record(
@@ -83,9 +76,9 @@ class MessageEvent(UUIDModel):
         message,
         event_type: str,
         *,
-        ip_address: str | None = None,
-        user_agent: str = "",
-        location:   str = "",
+        ip_address:  str | None = None,
+        user_agent:  str = "",
+        location:    str = "",
         clicked_url: str = "",
         raw_payload: dict | None = None,
         occurred_at=None,
@@ -102,12 +95,14 @@ class MessageEvent(UUIDModel):
         )
 
 
+# ── Click tracking ────────────────────────────────────────────────────────────
+
 class ClickToken(UUIDModel):
     """
-    Maps a short click-tracking token to its original URL.
+    Persisted mapping: short URL-safe token → original link URL.
 
-    Created by tracking_service.rewrite_links() when building
-    outgoing email HTML. Looked up by tracking/views.py on redirect.
+    One row per unique URL per message (reuse if the same URL
+    appears multiple times in the same email body).
     """
 
     message      = models.ForeignKey(
@@ -117,27 +112,40 @@ class ClickToken(UUIDModel):
     )
     token        = models.CharField(max_length=128, unique=True, db_index=True)
     original_url = models.TextField()
+
+    # Engagement counters
     click_count  = models.PositiveIntegerField(default=0)
+    first_clicked = models.DateTimeField(null=True, blank=True)
+    last_clicked  = models.DateTimeField(null=True, blank=True)
+
     created_at   = models.DateTimeField(default=timezone.now)
-    last_clicked = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Click Token"
         ordering     = ["-created_at"]
+        indexes      = [models.Index(fields=["token"])]
 
     def __str__(self) -> str:
         return f"ClickToken({self.token[:12]}…) → {self.original_url[:60]}"
 
-    def record_click(self, ip: str = "", ua: str = "") -> MessageEvent:
-        """Increment counter, update last_clicked, and record a CLICKED event."""
+    def record_click(self, ip: str = "", ua: str = "") -> "MessageEvent":
+        """
+        Increment counter, update timestamps, update message status,
+        and persist a CLICKED MessageEvent.
+        """
+        now = timezone.now()
         self.click_count += 1
-        self.last_clicked = timezone.now()
-        self.save(update_fields=["click_count", "last_clicked"])
+        if not self.first_clicked:
+            self.first_clicked = now
+        self.last_clicked = now
+        self.save(update_fields=["click_count", "first_clicked", "last_clicked"])
 
-        # Update parent message status to CLICKED (highest engagement)
+        # Escalate message status (clicked > opened > delivered)
         msg = self.message
         if msg.status not in (
-            msg.Status.BOUNCED, msg.Status.COMPLAINED, msg.Status.FAILED
+            msg.Status.BOUNCED,
+            msg.Status.COMPLAINED,
+            msg.Status.FAILED,
         ):
             msg.status = msg.Status.CLICKED
             msg.save(update_fields=["status", "updated_at"])
@@ -151,34 +159,42 @@ class ClickToken(UUIDModel):
         )
 
 
+# ── Open tracking ─────────────────────────────────────────────────────────────
+
 class OpenToken(UUIDModel):
     """
-    Maps a short open-tracking token to its message.
+    Persisted mapping: short URL-safe token → message open pixel.
 
-    Created by tracking_service.inject_tracking_pixel().
-    Looked up by tracking/views.py when the pixel fires.
+    One row per message (multiple fires increment open_count).
     """
 
-    message     = models.ForeignKey(
+    message      = models.ForeignKey(
         "email_messages.Message",
         on_delete=models.CASCADE,
         related_name="open_tokens",
     )
-    token       = models.CharField(max_length=128, unique=True, db_index=True)
-    open_count  = models.PositiveIntegerField(default=0)
-    created_at  = models.DateTimeField(default=timezone.now)
+    token        = models.CharField(max_length=128, unique=True, db_index=True)
+
+    # Engagement counters
+    open_count   = models.PositiveIntegerField(default=0)
     first_opened = models.DateTimeField(null=True, blank=True)
     last_opened  = models.DateTimeField(null=True, blank=True)
+
+    created_at   = models.DateTimeField(default=timezone.now)
 
     class Meta:
         verbose_name = "Open Token"
         ordering     = ["-created_at"]
+        indexes      = [models.Index(fields=["token"])]
 
     def __str__(self) -> str:
         return f"OpenToken({self.token[:12]}…) for msg {self.message_id}"
 
-    def record_open(self, ip: str = "", ua: str = "") -> MessageEvent:
-        """Increment counter and record an OPENED event."""
+    def record_open(self, ip: str = "", ua: str = "") -> "MessageEvent":
+        """
+        Increment counter, update timestamps, update message status,
+        and persist an OPENED MessageEvent.
+        """
         now = timezone.now()
         self.open_count += 1
         if not self.first_opened:
@@ -186,7 +202,7 @@ class OpenToken(UUIDModel):
         self.last_opened = now
         self.save(update_fields=["open_count", "first_opened", "last_opened"])
 
-        # Update parent message status
+        # Only escalate if not already in a higher state
         msg = self.message
         if msg.status not in (
             msg.Status.CLICKED,

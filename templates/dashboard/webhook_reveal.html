@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Save Webhook Secret{% endblock %}
+{% block page_title %}Save Your Webhook Secret{% endblock %}
+
+{% block content %}
+<div class="max-w-xl">
+  <div class="bg-white rounded-xl border border-amber-300 shadow-sm p-6">
+    <div class="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6">
+      <span class="text-xl">⚠️</span>
+      <p class="text-sm text-amber-800">
+        This signing secret is shown <strong>once</strong>. Store it securely — you
+        will not be able to retrieve it again.
+      </p>
+    </div>
+
+    <dl class="mb-5 space-y-2 text-sm">
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Webhook</dt>
+        <dd class="font-medium text-gray-800">{{ webhook.label }}</dd>
+      </div>
+      <div class="flex justify-between">
+        <dt class="text-gray-500">Endpoint</dt>
+        <dd class="font-mono text-xs text-gray-600 break-all">{{ webhook.url }}</dd>
+      </div>
+    </dl>
+
+    <label class="block text-sm font-medium text-gray-700 mb-2">Signing Secret</label>
+    <div class="flex items-center gap-2 mb-6">
+      <input id="secretInput" type="text" value="{{ secret }}" readonly
+             class="flex-1 font-mono text-sm bg-gray-50 border border-gray-300
+                    rounded-lg px-3 py-2 text-gray-800 select-all">
+      <button onclick="copySecret()"
+              class="flex-shrink-0 bg-gray-800 text-white text-sm px-4 py-2
+                     rounded-lg hover:bg-gray-900">Copy</button>
+    </div>
+
+    <div class="bg-gray-900 rounded-lg p-4 mb-6 text-xs font-mono text-gray-300 overflow-x-auto">
+      <span class="text-gray-500"># Verify signature in your endpoint</span><br>
+      import hmac, hashlib<br>
+      sig = hmac.new(<span class="text-green-400">b"{{ secret }}"</span>, request.body, hashlib.sha256)<br>
+      expected = <span class="text-yellow-300">"sha256=" + sig.hexdigest()</span><br>
+      assert hmac.compare_digest(expected, request.headers["X-MailFlow-Signature"])
+    </div>
+
+    <a href="{% url 'web:webhooks' %}"
+       class="inline-block bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700">
+      I've saved my secret →
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function copySecret() {
+    const el = document.getElementById('secretInput');
+    el.select();
+    navigator.clipboard.writeText(el.value).then(() => {
+      const btn = event.target;
+      btn.textContent = 'Copied!';
+      btn.classList.replace('bg-gray-800','bg-green-600');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.replace('bg-green-600','bg-gray-800'); }, 2000);
+    });
+  }
+</script>
+{% endblock %}

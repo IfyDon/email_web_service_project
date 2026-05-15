@@ -6,13 +6,13 @@ app_name = "web"
 
 urlpatterns = [
     # ── Public ────────────────────────────────────────────────────────────────
-    path("",        dashboard.landing,     name="landing"),
-    path("status/", dashboard.status_page, name="status"),
+    path("",        dashboard.landing,      name="landing"),
+    path("status/", dashboard.status_page,  name="status"),
 
     # ── Dashboard ─────────────────────────────────────────────────────────────
-    path("dashboard/",                    login_required(dashboard.overview),       name="dashboard"),
-    path("dashboard/messages/",           login_required(dashboard.messages_view), name="messages"),
-    path("dashboard/messages/<uuid:pk>/", login_required(dashboard.message_detail), name="message-detail"),
+    path("dashboard/",                    login_required(dashboard.overview),        name="dashboard"),
+    path("dashboard/messages/",           login_required(dashboard.messages_view),   name="messages"),
+    path("dashboard/messages/<uuid:pk>/", login_required(dashboard.message_detail),  name="message-detail"),
 
     # ── Domains ───────────────────────────────────────────────────────────────
     path("dashboard/domains/",                   login_required(domains_ui.domain_list),   name="domains"),
@@ -22,24 +22,22 @@ urlpatterns = [
     path("dashboard/domains/<uuid:pk>/delete/",  login_required(domains_ui.domain_delete), name="domain-delete"),
 
     # ── Templates ─────────────────────────────────────────────────────────────
-    path("dashboard/templates/",
-         login_required(templates_ui.template_list),   name="templates"),
-    path("dashboard/templates/new/",
-         login_required(templates_ui.template_edit),   name="template-new"),
-    path("dashboard/templates/<uuid:pk>/edit/",
-         login_required(templates_ui.template_edit),   name="template-edit"),
-    path("dashboard/templates/<uuid:pk>/delete/",
-         login_required(templates_ui.template_delete), name="template-delete"),
-    path("dashboard/templates/<uuid:pk>/preview/",
-         login_required(templates_ui.template_preview_ajax), name="template-preview"),
+    path("dashboard/templates/",                login_required(templates_ui.template_list),         name="templates"),
+    path("dashboard/templates/new/",            login_required(templates_ui.template_edit),         name="template-new"),
+    path("dashboard/templates/<uuid:pk>/edit/", login_required(templates_ui.template_edit),         name="template-edit"),
+    path("dashboard/templates/<uuid:pk>/delete/",   login_required(templates_ui.template_delete),   name="template-delete"),
+    path("dashboard/templates/<uuid:pk>/preview/",  login_required(templates_ui.template_preview_ajax), name="template-preview"),
 
     # ── Analytics ─────────────────────────────────────────────────────────────
     path("dashboard/analytics/", login_required(analytics_ui.analytics), name="analytics"),
 
     # ── Webhooks ──────────────────────────────────────────────────────────────
-    path("dashboard/webhooks/",                  login_required(webhooks_ui.webhook_list),   name="webhooks"),
-    path("dashboard/webhooks/add/",              login_required(webhooks_ui.webhook_add),    name="webhook-add"),
-    path("dashboard/webhooks/<uuid:pk>/delete/", login_required(webhooks_ui.webhook_delete), name="webhook-delete"),
+    path("dashboard/webhooks/",                      login_required(webhooks_ui.webhook_list),        name="webhooks"),
+    path("dashboard/webhooks/add/",                  login_required(webhooks_ui.webhook_add),         name="webhook-add"),
+    path("dashboard/webhooks/reveal/",               login_required(webhooks_ui.webhook_reveal),      name="webhook-reveal"),
+    path("dashboard/webhooks/<uuid:pk>/",            login_required(webhooks_ui.webhook_detail),      name="webhook-detail"),
+    path("dashboard/webhooks/<uuid:pk>/delete/",     login_required(webhooks_ui.webhook_delete),      name="webhook-delete"),
+    path("dashboard/webhooks/<uuid:pk>/test/",       login_required(webhooks_ui.webhook_test_ajax),   name="webhook-test"),
 
     # ── Suppressions ─────────────────────────────────────────────────────────
     path("dashboard/suppressions/", login_required(dashboard.suppressions), name="suppressions"),
@@ -53,7 +51,7 @@ urlpatterns = [
     path("dashboard/2fa/setup/",                 login_required(account.two_fa_setup),        name="2fa-setup"),
     path("dashboard/2fa/backup-codes/",          login_required(account.two_fa_backup_codes), name="2fa-backup-codes"),
     path("dashboard/2fa/disable/",               login_required(account.two_fa_disable),      name="2fa-disable"),
-    path("dashboard/billing/",                   login_required(account.billing),          name="billing"),
+    path("dashboard/billing/",                   login_required(account.billing),             name="billing"),
 
     # ── Unsubscribe (public) ──────────────────────────────────────────────────
     path("unsubscribe/<str:token>/", dashboard.unsubscribe, name="unsubscribe"),
