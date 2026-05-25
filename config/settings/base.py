@@ -203,38 +203,125 @@ REST_FRAMEWORK = {
 
 
 # ── DRF Spectacular (OpenAPI) ─────────────────────────────────────────────────
+"""
+Replace the SPECTACULAR_SETTINGS block in config/settings/base.py with this.
+
+Place: config/settings/base.py
+"""
+
 SPECTACULAR_SETTINGS = {
+    # ── Identity ──────────────────────────────────────────────────────────────
     "TITLE":       "MailFlow Email Delivery API",
-    "DESCRIPTION": (
-        "Transactional and bulk email delivery via a simple REST API. "
-        "Authenticate with `Authorization: Bearer ems_<your_key>`."
-    ),
+    "DESCRIPTION": """
+## Overview
+Transactional and bulk email delivery REST API.
+
+Send emails, track engagement, manage sending domains, and receive real-time
+event notifications via webhooks — all through a simple versioned API.
+
+## Authentication
+All API endpoints (except `/api/health/`, `/api/inbound/*`, and the schema)
+require authentication via a **Bearer API key**.
+
+```
+Authorization: Bearer ems_your_api_key_here
+```
+
+Generate keys in the [dashboard](/dashboard/api-keys/) or via
+`POST /api/v1/auth/api-keys/`.
+
+## Rate Limits
+| Scope       | Default limit       |
+|-------------|---------------------|
+| Burst       | 10 requests / 5 s   |
+| Per-minute  | 100 requests / min  |
+| Per-hour    | 1 000 requests / hr |
+| Send        | 30 sends / min      |
+
+Per-key overrides can be configured on each API key.
+When a limit is exceeded the response is `429 Too Many Requests` with a
+`Retry-After` header indicating when to retry.
+
+## Errors
+All errors follow a consistent envelope:
+```json
+{ "error": { "code": "quota_exceeded", "message": "..." } }
+```
+
+## Versioning
+The current stable version is **v1** (`/api/v1/`).
+    """.strip(),
     "VERSION":     "1.0.0",
+    "CONTACT":     {"name": "MailFlow Support", "email": "support@mailflow.io"},
+    "LICENSE":     {"name": "Proprietary"},
     "SERVE_INCLUDE_SCHEMA": False,
+
+    # ── Schema behaviour ──────────────────────────────────────────────────────
     "COMPONENT_SPLIT_REQUEST": True,
-    # Group endpoints by first path segment (/auth/, /messages/, etc.)
-    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+/",
-    # Security scheme shown in Swagger UI
-    "SECURITY": [{"ApiKeyAuth": []}],
+    "SCHEMA_PATH_PREFIX":      r"/api/v[0-9]+/",
+
+    # ── Security ──────────────────────────────────────────────────────────────
+    "SECURITY": [{"BearerToken": []}],
     "COMPONENTS": {
         "securitySchemes": {
-            "ApiKeyAuth": {
-                "type": "http",
-                "scheme": "bearer",
+            "BearerToken": {
+                "type":         "http",
+                "scheme":       "bearer",
                 "bearerFormat": "ems_<token>",
+                "description":  "API key obtained from the dashboard or POST /api/v1/auth/api-keys/",
             }
         }
     },
-    # Sidecar bundles Swagger + Redoc assets locally (no CDN in prod)
+
+    # ── Tag ordering in Swagger UI ────────────────────────────────────────────
+    "TAGS": [
+        {"name": "Authentication",  "description": "Sign up, login, API key management, 2FA"},
+        {"name": "Send",            "description": "Single and bulk email dispatch"},
+        {"name": "Messages",        "description": "Message history, status, event timeline"},
+        {"name": "Templates",       "description": "HTML/MJML template CRUD with versioning"},
+        {"name": "Domains",         "description": "Sending domain registration and DNS verification"},
+        {"name": "Suppressions",    "description": "Bounce / complaint / unsubscribe management"},
+        {"name": "Webhooks",        "description": "Outbound event notifications to user endpoints"},
+        {"name": "Statistics",      "description": "Aggregated sending metrics"},
+        {"name": "Inbound (ESP)",   "description": "ESP event receivers (AWS SES/SNS, generic)"},
+    ],
+
+    # ── Swagger UI config ─────────────────────────────────────────────────────
     "SWAGGER_UI_SETTINGS": {
-        "deepLinking":             True,
-        "persistAuthorization":    True,
-        "displayRequestDuration":  True,
-        "filter":                  True,
+        "deepLinking":            True,
+        "persistAuthorization":   True,
+        "displayRequestDuration": True,
+        "filter":                 True,
+        "tryItOutEnabled":        True,
+        "operationsSorter":       "alpha",
+        "tagsSorter":             "alpha",
     },
+    "SWAGGER_UI_FAVICON_HREF": "/static/img/favicon.ico",
+
+    # ── Redoc config ──────────────────────────────────────────────────────────
     "REDOC_SETTINGS": {
-        "lazyRendering": True,
+        "lazyRendering":          True,
+        "nativeScrollbars":       False,
+        "expandResponses":        "200,201,202",
+        "requiredPropsFirst":     True,
     },
+
+    # ── Schema preprocessing ──────────────────────────────────────────────────
+    "PREPROCESSING_HOOKS": [
+        "api.schema_hooks.preprocess_exclude_schema_endpoints",
+    ],
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "api.schema_hooks.postprocess_add_examples",
+    ],
+
+    # ── Enum generation ───────────────────────────────────────────────────────
+    "ENUM_GENERATE_CHOICE_DESCRIPTION": True,
+    "ENUM_ADD_EXPLICIT_BLANK_NULL_CHOICE": False,
+
+    # ── Miscellaneous ─────────────────────────────────────────────────────────
+    "SERVE_AUTHENTICATION": [],          # schema endpoint needs no auth
+    "DISABLE_ERRORS_AND_WARNINGS": False,
 }
 
 # ── Add INSTALLED_APPS addition (django-filter) ───────────────────────────────
