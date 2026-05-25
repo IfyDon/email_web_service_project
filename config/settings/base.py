@@ -73,7 +73,8 @@ MIDDLEWARE = [
     "django_otp.middleware.OTPMiddleware",                 # 2FA
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "core.middleware.request_id.RequestIDMiddleware",      # attaches X-Request-ID
+    "core.middleware.request_id.RequestIDMiddleware", 
+    "core.middleware.logging.RequestLoggingMiddleware",     # attaches X-Request-ID
     "allauth.account.middleware.AccountMiddleware",        # required by allauth
 ]
 
@@ -163,25 +164,83 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_THROTTLE_CLASSES": [
-        "rest_framework.throttling.UserRateThrottle",
+        "core.throttling.BurstThrottle",     # 10 req / 5s  (burst protection)
+        "core.throttling.PerMinuteThrottle", # 100 req / min (per key)
+        "core.throttling.PerHourThrottle",   # 1 000 req / hr (per key)
     ],
     "DEFAULT_THROTTLE_RATES": {
         "user": "100/min",
+        "burst":    "10/5s",
+        "api_min":  "100/min",
+        "api_hour": "1000/hour",
+        "send_min": "30/min",
     },
     "DEFAULT_PAGINATION_CLASS": "core.pagination.StandardResultsPagination",
     "PAGE_SIZE": 50,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "core.exceptions.custom_exception_handler",
+
+    # ── Filter backend ────────────────────────────────────────────────────────
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+
+    # ── Renderer ──────────────────────────────────────────────────────────────
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+
+    # ── Parser ────────────────────────────────────────────────────────────────
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
+        "rest_framework.parsers.MultiPartParser",   # file uploads
+    ],
+
 }
+
+
 
 # ── DRF Spectacular (OpenAPI) ─────────────────────────────────────────────────
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Email Delivery Service API",
-    "DESCRIPTION": "Transactional & bulk email delivery – versioned REST API.",
-    "VERSION": "1.0.0",
+    "TITLE":       "MailFlow Email Delivery API",
+    "DESCRIPTION": (
+        "Transactional and bulk email delivery via a simple REST API. "
+        "Authenticate with `Authorization: Bearer ems_<your_key>`."
+    ),
+    "VERSION":     "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    # Group endpoints by first path segment (/auth/, /messages/, etc.)
+    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+/",
+    # Security scheme shown in Swagger UI
+    "SECURITY": [{"ApiKeyAuth": []}],
+    "COMPONENTS": {
+        "securitySchemes": {
+            "ApiKeyAuth": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "ems_<token>",
+            }
+        }
+    },
+    # Sidecar bundles Swagger + Redoc assets locally (no CDN in prod)
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking":             True,
+        "persistAuthorization":    True,
+        "displayRequestDuration":  True,
+        "filter":                  True,
+    },
+    "REDOC_SETTINGS": {
+        "lazyRendering": True,
+    },
 }
+
+# ── Add INSTALLED_APPS addition (django-filter) ───────────────────────────────
+# Add "django_filters" to THIRD_PARTY_APPS list:
+#   "django_filters",
+
 
 # ── Celery ────────────────────────────────────────────────────────────────────
 CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/0")
@@ -218,14 +277,48 @@ DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@localhost")
 
 # ── Logging placeholder (overridden per environment) ─────────────────────────
 LOGGING = {
-    "version": 1,
+    "version":                  1,
     "disable_existing_loggers": False,
+    "formatters": {
+        "json": {
+            "()": "logging.Formatter",
+            "fmt": "%(message)s",   # messages are already JSON
+        },
+        "verbose": {
+            "format": "{levelname} {asctime} {name} {message}",
+            "style":  "{",
+        },
+    },
     "handlers": {
-        "console": {"class": "logging.StreamHandler"},
+        "console": {
+            "class":     "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "api_access": {
+            "class":     "logging.StreamHandler",
+            "formatter": "json",
+        },
+    },
+    "loggers": {
+        "api.access": {
+            "handlers":  ["api_access"],
+            "level":     "INFO",
+            "propagate": False,
+        },
+        "services": {
+            "handlers":  ["console"],
+            "level":     "INFO",
+            "propagate": False,
+        },
+        "workers": {
+            "handlers":  ["console"],
+            "level":     "INFO",
+            "propagate": False,
+        },
     },
     "root": {
         "handlers": ["console"],
-        "level": "INFO",
+        "level":    "INFO",
     },
 }
 

@@ -18,7 +18,7 @@ urlpatterns = [
     path("api/redoc/",  SpectacularRedocView.as_view(url_name="schema"),       name="redoc"),
 
     # REST API
-    path("api/", include("api.urls")),
+    path("api/", include("api.urls", namespace="api")),
 
     # Tracking pixel endpoints
     path("t/", include("tracking.urls")),
@@ -26,8 +26,11 @@ urlpatterns = [
     # Django Allauth
     path("accounts/", include("allauth.urls")),
 
+    # ── Open / click tracking endpoints ──────────────────────────────────────
+    path("t/", include("tracking.urls", namespace="tracking")),
+
     # Web dashboard
-    path("", include("web.urls")),
+    path("", include("web.urls", namespace="web")),
 ]
 
 if settings.DEBUG:
