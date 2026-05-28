@@ -45,8 +45,15 @@
 
       <!-- Record badges -->
       <div class="flex items-center gap-2">
-        {% for label, ok in domain.spf_verified|yesno:"spf,"|center:0,domain.dkim_verified|yesno:"dkim,"|center:0,domain.dmarc_verified|yesno:"dmarc,"|center:0 %}
-        {% endfor %}
+        {% if domain.spf_verified %}
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">spf</span>
+        {% endif %}
+        {% if domain.dkim_verified %}
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">dkim</span>
+        {% endif %}
+        {% if domain.dmarc_verified %}
+          <span class="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">dmarc</span>
+        {% endif %}
         {% for record in domain.dns_records_to_publish %}
         <span class="text-xs px-2 py-0.5 rounded-full font-medium
           {% if record.verified %}bg-green-100 text-green-700

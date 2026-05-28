@@ -148,9 +148,12 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
-ACCOUNT_LOGIN_METHODS = {"email"}
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_LOGIN_METHODS             = {"email", "username"}   # allow both
+ACCOUNT_SIGNUP_FIELDS             = ["email*", "username*", "password1*", "password2*"]
+ACCOUNT_EMAIL_VERIFICATION        = "none"                  # "mandatory" in prod                  # now required at signup
+ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"              # points to the field
+ACCOUNT_EMAIL_SUBJECT_PREFIX      = "[MailFlow] "
+ACCOUNT_DEFAULT_HTTP_PROTOCOL     = "http"                  # "https" in prod
 LOGIN_REDIRECT_URL = "/dashboard/"
 LOGOUT_REDIRECT_URL = "/"
 

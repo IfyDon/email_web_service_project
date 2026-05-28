@@ -1,4 +1,4 @@
-/*
+
 import { get, post } from './client';
 
 export const messagesApi = {
@@ -7,4 +7,3 @@ export const messagesApi = {
   send:   (data)   => post('/send',        data),
   bulk:   (data)   => post('/send/bulk',   data),
 };
-*/

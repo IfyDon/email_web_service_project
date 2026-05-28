@@ -29,6 +29,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         model  = User
         fields = ["email", "full_name", "password", "password2"]
 
+    def validate_username(self, value):
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value.lower()
+
     def validate(self, attrs):
         if attrs["password"] != attrs.pop("password2"):
             raise serializers.ValidationError({"password2": "Passwords do not match."})

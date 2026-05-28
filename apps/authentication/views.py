@@ -100,7 +100,8 @@ class LoginView(APIView):
     def post(self, request):
         email    = request.data.get("email", "")
         password = request.data.get("password", "")
-        user     = authenticate(request, username=email, password=password)
+        user     = authenticate(request, username=identifier, password=password)
+
 
         if user is None:
             AuditLog.record(AuditLog.Action.LOGIN_FAILED, request=request,

@@ -27,7 +27,7 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
 
     # ── Open / click tracking endpoints ──────────────────────────────────────
-    path("t/", include("tracking.urls", namespace="tracking")),
+    path("t/", include(("tracking.urls", "tracking"), namespace="tracking")),
 
     # Web dashboard
     path("", include("web.urls", namespace="web")),

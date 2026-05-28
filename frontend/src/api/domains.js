@@ -1,4 +1,4 @@
-/*
+
 import { get, post, del } from './client';
 
 export const domainsApi = {
@@ -8,4 +8,3 @@ export const domainsApi = {
   verify: (id) => post(`/domains/${id}/verify/`),
   delete: (id) => del(`/domains/${id}/`),
 };
-*/
